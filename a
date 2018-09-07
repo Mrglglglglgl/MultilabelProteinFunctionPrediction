@@ -1,0 +1,343 @@
+[1mdiff --git a/custom_modules/__init__.py b/custom_modules/__init__.py[m
+[1mnew file mode 100644[m
+[1mindex 0000000..e69de29[m
+[1mdiff --git a/custom_modules/branches.py b/custom_modules/branches.py[m
+[1mnew file mode 100644[m
+[1mindex 0000000..fb4da97[m
+[1m--- /dev/null[m
+[1m+++ b/custom_modules/branches.py[m
+[36m@@ -0,0 +1,74 @@[m
+[32m+[m[32m"""[m
+[32m+[m[32ma class representing a branch (MLDNN), contaning information regarding the branch, its datasets and metrics and some useful methods.[m[41m [m
+[32m+[m[32mIdeally it needs to be split into smaller classes.[m
+[32m+[m[32m"""[m
+[32m+[m
+[32m+[m[32mimport pandas as pd[m
+[32m+[m[32mimport numpy as np[m
+[32m+[m[32mimport torch[m
+[32m+[m[32mfrom torchsample import TensorDataset[m
+[32m+[m[32mimport warnings[m
+[32m+[m
+[32m+[m[32mwarnings.filterwarnings("ignore")[m
+[32m+[m
+[32m+[m[32mtorch.manual_seed(13)[m
+[32m+[m
+[32m+[m[32mclass Branch(object):[m
+[32m+[m[41m    [m
+[32m+[m[32m    def __init__(self, go_term, dict_of_go_terms, dict_of_categories):[m
+[32m+[m[32m        self.go_term = go_term[m
+[32m+[m[32m        self.category = dict_of_categories[go_term][m
+[32m+[m[32m        self.x_train = dict_of_go_terms[go_term]['x_train'][m
+[32m+[m[32m        self.y_train = dict_of_go_terms[go_term]['y_train'][m
+[32m+[m[32m        self.x_valid = dict_of_go_terms[go_term]['x_valid'][m
+[32m+[m[32m        self.y_valid = dict_of_go_terms[go_term]['y_valid'][m
+[32m+[m[32m        self.x_test = dict_of_go_terms[go_term]['x_test'][m
+[32m+[m[32m        self.y_test = dict_of_go_terms[go_term]['y_test'][m
+[32m+[m[32m        self.label_names = dict_of_go_terms[go_term]['y_test'].columns.values.tolist()[1:][m
+[32m+[m[32m        self.f1_median_valid = -1.0[m
+[32m+[m[32m        self.f1_median_test = -1.0[m
+[32m+[m[41m        [m
+[32m+[m[32m    def train_size(self):[m
+[32m+[m
+[32m+[m[32m        return self.x_train.shape[m
+[32m+[m
+[32m+[m[32m    def valid_size(self):[m
+[32m+[m
+[32m+[m[32m        return self.x_valid.shape[m
+[32m+[m
+[32m+[m[32m    def test_size(self):[m
+[32m+[m
+[32m+[m[32m        return self.x_test.shape[m
+[32m+[m
+[32m+[m[32m    def train_tensors(self):[m
+[32m+[m[32m        x_train_tensor = torch.FloatTensor((self.x_train.values[:, 1:]).astype(np.float32))[m
+[32m+[m[32m        (self.y_train).replace(np.inf, 0, inplace=True)[m
+[32m+[m[32m        y_train_tensor = torch.FloatTensor((self.y_train.values[:, 1:]).astype(np.int))[m
+[32m+[m[41m        [m
+[32m+[m[32m        return x_train_tensor, y_train_tensor, TensorDataset(x_train_tensor, y_train_tensor)[m
+[32m+[m[41m    [m
+[32m+[m[32m    def valid_tensors(self):[m
+[32m+[m[32m        x_valid_tensor = torch.FloatTensor((self.x_valid.values[:, 1:]).astype(np.float32))[m
+[32m+[m[32m        (self.y_valid).replace(np.inf, 0, inplace=True)[m
+[32m+[m[32m        y_valid_tensor = torch.FloatTensor((self.y_valid.values[:, 1:]).astype(np.int))[m
+[32m+[m
+[32m+[m[32m        return x_valid_tensor, y_valid_tensor, TensorDataset(x_valid_tensor, y_valid_tensor)[m
+[32m+[m[41m         [m
+[32m+[m[32m    def test_tensors(self):[m
+[32m+[m[32m        x_test_tensor = torch.FloatTensor((self.x_test.values[:, 1:]).astype(np.float32))[m
+[32m+[m[32m        (self.y_test).replace(np.inf, 0, inplace=True)[m
+[32m+[m[32m        y_test_tensor = torch.FloatTensor((self.y_test.values[:, 1:]).astype(np.int))[m
+[32m+[m[41m        [m
+[32m+[m[32m        return x_test_tensor, y_test_tensor, TensorDataset(x_test_tensor, y_test_tensor)[m
+[32m+[m
+[32m+[m
+[32m+[m[32m    def get_prediction_probabilities(self, predictions, t=1):[m
+[32m+[m
+[32m+[m[32m        if t==0:[m
+[32m+[m[32m            prediction_probabilities = pd.DataFrame(predictions, index=self.y_train["Unnamed: 0"], columns=self.label_names)[m
+[32m+[m[32m        elif t==1:[m
+[32m+[m[32m            prediction_probabilities = pd.DataFrame(predictions, index=self.y_test["Unnamed: 0"],columns=self.label_names)[m
+[32m+[m[32m        else:[m
+[32m+[m[32m            prediction_probabilities = pd.DataFrame(predictions, index=self.y_valid["Unnamed: 0"], columns=self.label_names)[m
+[32m+[m
+[32m+[m[32m        return prediction_probabilities[m
+[1mdiff --git a/custom_modules/combining_tools.py b/custom_modules/combining_tools.py[m
+[1mnew file mode 100644[m
+[1mindex 0000000..d5c0e6c[m
+[1m--- /dev/null[m
+[1m+++ b/custom_modules/combining_tools.py[m
+[36m@@ -0,0 +1,184 @@[m
+[32m+[m[32m"""[m
+[32m+[m[32ma method containing function to be used for combining MLDNN predictions[m
+[32m+[m[32mfor the different cost functions[m
+[32m+[m[32m"""[m
+[32m+[m
+[32m+[m[32mimport pickle[m
+[32m+[m[32mimport pandas as pd[m
+[32m+[m[32mimport torch[m
+[32m+[m[32mfrom collections import Counter, defaultdict[m
+[32m+[m[32mimport torch.nn as nn[m
+[32m+[m[32mfrom custom_mlp import MLP[m
+[32m+[m
+[32m+[m[32mdef combine_branches_ltr_only(x_test, x_test_df, fmax_ltr_only_idx_list):[m
+[32m+[m
+[32m+[m	[32mfile = open('/cluster/project1/FFPredLTR/MLDNN/branch_list.pickle', 'rb')[m
+[32m+[m	[32mlist_of_branches = pickle.load(file)[m
+[32m+[m	[32mfile.close()[m
+[32m+[m	[32msigmoid = nn.Sigmoid().cuda()[m
+[32m+[m	[32mevaluation = defaultdict()[m
+[32m+[m	[32minput_size = 258[m
+[32m+[m	[32mfor idx, (branch, margin) in enumerate(zip(list_of_branches, fmax_ltr_only_idx_list)):[m
+[32m+[m		[32moutput_size = len(branch.label_names)[m
+[32m+[m		[32mfile = open('/cluster/project1/FFPredLTR/MLDNN/LTR_only_experiments_margin_' + margin + '/branches_metrics_LTR_only_margin_' + margin + '_light.pickle', 'rb')[m
+[32m+[m		[32mtrained_branch = pickle.load(file)[idx][m
+[32m+[m		[32mnet = MLP(input_size, output_size, trained_branch.parameter_dict).cuda()[m
+[32m+[m		[32mnet.load_state_dict(torch.load('/cluster/project1/FFPredLTR/MLDNN/LTR_only_experiments_margin_' + margin + '/parameters/' + branch.go_term + 'LTR_only_margin_'+ margin + '.pt'))[m
+[32m+[m		[32mnet.eval()[m
+[32m+[m		[32mtest_probabilities = sigmoid(net(x_test)).detach().cpu().numpy()[m
+[32m+[m		[32mdf = pd.DataFrame(index=x_test_df.index, columns=trained_branch.label_names, data=test_probabilities)[m
+[32m+[m		[32mevaluation[trained_branch.go_term] = df[m
+[32m+[m	[32mfile = open('final_probabilities_per_branch_ltr_only.pickle', 'wb')[m
+[32m+[m	[32mpickle.dump(evaluation, file)[m
+[32m+[m	[32mfile.close()[m
+[32m+[m
+[32m+[m[32mdef final_predictions_ltr_only(x_test, x_test_df):[m
+[32m+[m
+[32m+[m	[32mmetrics_dict = defaultdict()[m
+[32m+[m	[32mfile = open('bp_terms_dict.pickle', 'rb')[m
+[32m+[m	[32mbp_terms_dict = pickle.load(file)[m
+[32m+[m	[32mfile.close()[m
+[32m+[m	[32mfile = open('mf_terms_dict.pickle', 'rb')[m
+[32m+[m	[32mmf_terms_dict = pickle.load(file)[m
+[32m+[m	[32mfile.close()[m
+[32m+[m	[32mfile = open('cc_terms_dict.pickle', 'rb')[m
+[32m+[m	[32mcc_terms_dict = pickle.load(file)[m
+[32m+[m	[32mfile.close()[m
+[32m+[m	[32mfile = open('final_probabilities_per_branch_ltr_only.pickle', 'rb')[m
+[32m+[m	[32mcombined_dict = pickle.load(file)[m
+[32m+[m	[32mfile.close()[m
+[32m+[m	[32mlist_of_go_terms = list(bp_terms_dict.keys()) + list(mf_terms_dict.keys()) + list(cc_terms_dict.keys())[m
+[32m+[m	[32mfinal_probabilities_df = pd.DataFrame(0, index= x_test_df.index, columns=list_of_go_terms)[m
+[32m+[m	[32mfor protein in list(final_probabilities_df.index):[m
+[32m+[m		[32mfor branch_name, branch_preds_dataframe in combined_dict.items():[m
+[32m+[m			[32mfor label in list(branch_preds_dataframe.columns):[m
+[32m+[m				[32mfinal_probabilities_df.loc[protein, label] += branch_preds_dataframe.loc[protein, label][m
+[32m+[m	[32mfor name, freq in bp_terms_dict.items():[m
+[32m+[m		[32mfinal_probabilities_df[str(name)] = final_probabilities_df[str(name)].div(freq).round(2)[m
+[32m+[m	[32mfor name, freq in mf_terms_dict.items():[m
+[32m+[m		[32mfinal_probabilities_df[str(name)] = final_probabilities_df[str(name)].div(freq).round(2)[m
+[32m+[m	[32mfor name, freq in cc_terms_dict.items():[m
+[32m+[m		[32mfinal_probabilities_df[str(name)] = final_probabilities_df[str(name)].div(freq).round(2)[m
+[32m+[m	[32mfinal_predictions_df = final_probabilities_df.round(0)[m
+[32m+[m
+[32m+[m	[32mmetrics_dict['preds'] = final_predictions_df[m
+[32m+[m	[32mmetrics_dict['probs'] = final_probabilities_df[m
+[32m+[m
+[32m+[m	[32mfile = open('final_evaluation_dict_ltr_only.pickle', 'wb')[m
+[32m+[m	[32mpickle.dump(metrics_dict, file)[m
+[32m+[m	[32mfile.close()[m
+[32m+[m
+[32m+[m[32mdef combine_branches_ltr(x_test, x_test_df, fmax_ltr_idx_list):[m
+[32m+[m
+[32m+[m	[32mfile = open('/cluster/project1/FFPredLTR/MLDNN/branch_list.pickle', 'rb')[m
+[32m+[m	[32mlist_of_branches = pickle.load(file)[m
+[32m+[m	[32mfile.close()[m
+[32m+[m	[32msigmoid = nn.Sigmoid().cuda()[m
+[32m+[m	[32mevaluation = defaultdict()[m
+[32m+[m	[32minput_size = 258[m
+[32m+[m	[32mfor idx, (branch, margin) in enumerate(zip(list_of_branches, fmax_ltr_idx_list)):[m
+[32m+[m		[32moutput_size = len(branch.label_names)[m
+[32m+[m		[32mfile = open('/cluster/project1/FFPredLTR/MLDNN/LTR_experiments_margin_' + '10' + '/branches_metrics_LTR_margin_' + '10' + '_light.pickle', 'rb')[m
+[32m+[m		[32mtrained_branch = pickle.load(file)[idx][m
+[32m+[m		[32mnet = MLP(input_size, output_size, trained_branch.parameter_dict).cuda()[m
+[32m+[m		[32mnet.load_state_dict(torch.load('/cluster/project1/FFPredLTR/MLDNN/LTR_experiments_margin_' + '10' + '/parameters/' + branch.go_term + 'LTR_margin_'+ '10' + '.pt'))[m
+[32m+[m		[32mnet.eval()[m
+[32m+[m		[32mtest_probabilities = sigmoid(net(x_test)).detach().cpu().numpy()[m
+[32m+[m		[32mdf = pd.DataFrame(index=x_test_df.index, columns=trained_branch.label_names, data=test_probabilities)[m
+[32m+[m		[32mevaluation[trained_branch.go_term] = df[m
+[32m+[m	[32mfile = open('final_probabilities_per_branch_ltr.pickle', 'wb')[m
+[32m+[m	[32mpickle.dump(evaluation, file)[m
+[32m+[m	[32mfile.close()[m
+[32m+[m
+[32m+[m[32mdef final_predictions_ltr(x_test, x_test_df):[m
+[32m+[m
+[32m+[m	[32mmetrics_dict = defaultdict()[m
+[32m+[m	[32mfile = open('bp_terms_dict.pickle', 'rb')[m
+[32m+[m	[32mbp_terms_dict = pickle.load(file)[m
+[32m+[m	[32mfile.close()[m
+[32m+[m	[32mfile = open('mf_terms_dict.pickle', 'rb')[m
+[32m+[m	[32mmf_terms_dict = pickle.load(file)[m
+[32m+[m	[32mfile.close()[m
+[32m+[m	[32mfile = open('cc_terms_dict.pickle', 'rb')[m
+[32m+[m	[32mcc_terms_dict = pickle.load(file)[m
+[32m+[m	[32mfile.close()[m
+[32m+[m	[32mfile = open('final_probabilities_per_branch_ltr.pickle', 'rb')[m
+[32m+[m	[32mcombined_dict = pickle.load(file)[m
+[32m+[m	[32mfile.close()[m
+[32m+[m	[32mlist_of_go_terms = list(bp_terms_dict.keys()) + list(mf_terms_dict.keys()) + list(cc_terms_dict.keys())[m
+[32m+[m	[32mfinal_probabilities_df = pd.DataFrame(0, index=x_test_df.index, columns=list_of_go_terms)[m
+[32m+[m	[32mprint(x_test_df.index)[m
+[32m+[m	[32mfor protein_idx, protein in enumerate(list(final_probabilities_df.index)):[m
+[32m+[m		[32mfor branch_name, branch_preds_dataframe in combined_dict.items():[m
+[32m+[m			[32mfor label_idx, label in enumerate(list(branch_preds_dataframe.columns)):[m
+[32m+[m				[32mincrement = branch_preds_dataframe.loc[protein,label][m
+[32m+[m				[32mfinal_probabilities_df.loc[protein,label] += increment[m
+[32m+[m	[32mfor name, freq in bp_terms_dict.items():[m
+[32m+[m		[32mfinal_probabilities_df[str(name)] = final_probabilities_df[str(name)].div(freq).round(2)[m
+[32m+[m	[32mfor name, freq in mf_terms_dict.items():[m
+[32m+[m		[32mfinal_probabilities_df[str(name)] = final_probabilities_df[str(name)].div(freq).round(2)[m
+[32m+[m	[32mfor name, freq in cc_terms_dict.items():[m
+[32m+[m		[32mfinal_probabilities_df[str(name)] = final_probabilities_df[str(name)].div(freq).round(2)[m
+[32m+[m	[32mfinal_predictions_df = final_probabilities_df.round(0)[m
+[32m+[m	[32mmetrics_dict['preds'] = final_predictions_df[m
+[32m+[m	[32mmetrics_dict['probs'] = final_probabilities_df[m
+[32m+[m	[32mfile = open('final_evaluation_dict_ltr.pickle', 'wb')[m
+[32m+[m	[32mpickle.dump(metrics_dict, file)[m
+[32m+[m	[32mfile.close()[m
+[32m+[m
+[32m+[m
+[32m+[m[32mdef combine_branches_bce(x_test, x_test_df):[m
+[32m+[m
+[32m+[m	[32mfile = open('/cluster/project1/FFPredLTR/MLDNN/branch_list.pickle', 'rb')[m
+[32m+[m	[32mlist_of_branches = pickle.load(file)[m
+[32m+[m	[32mfile.close()[m
+[32m+[m	[32msigmoid = nn.Sigmoid().cuda()[m
+[32m+[m	[32mevaluation = defaultdict()[m
+[32m+[m	[32minput_size = 258[m
+[32m+[m	[32mfor idx, branch in enumerate(list_of_branches):[m
+[32m+[m		[32moutput_size = len(branch.label_names)[m
+[32m+[m		[32mfile = open('/cluster/project1/FFPredLTR/MLDNN/BCE_experiments/branches_metrics_bce_light.pickle', 'rb')[m
+[32m+[m		[32mtrained_branch = pickle.load(file)[idx][m
+[32m+[m		[32mnet = MLP(input_size, output_size, trained_branch.parameter_dict).cuda()[m
+[32m+[m		[32mnet.load_state_dict(torch.load('/cluster/project1/FFPredLTR/MLDNN/BCE_experiments/parameters/'+ branch.go_term + '.pt'))[m
+[32m+[m		[32mnet.eval()[m
+[32m+[m		[32mtest_probabilities = sigmoid(net(x_test)).detach().cpu().numpy()[m
+[32m+[m		[32mdf = pd.DataFrame(index=x_test_df.index, columns=trained_branch.label_names, data=test_probabilities)[m
+[32m+[m		[32mevaluation[trained_branch.go_term] = df[m
+[32m+[m	[32mfile = open('final_probabilities_per_branch_bce.pickle', 'wb')[m
+[32m+[m	[32mpickle.dump(evaluation, file)[m
+[32m+[m	[32mfile.close()[m
+[32m+[m
+[32m+[m[32mdef final_predictions_bce(x_test, x_test_df):[m
+[32m+[m
+[32m+[m	[32mmetrics_dict = defaultdict()[m
+[32m+[m	[32mfile = open('bp_terms_dict.pickle', 'rb')[m
+[32m+[m	[32mbp_terms_dict = pickle.load(file)[m
+[32m+[m	[32mfile.close()[m
+[32m+[m	[32mfile = open('mf_terms_dict.pickle', 'rb')[m
+[32m+[m	[32mmf_terms_dict = pickle.load(file)[m
+[32m+[m	[32mfile.close()[m
+[32m+[m	[32mfile = open('cc_terms_dict.pickle', 'rb')[m
+[32m+[m	[32mcc_terms_dict = pickle.load(file)[m
+[32m+[m	[32mfile.close()[m
+[32m+[m	[32mfile = open('final_probabilities_per_branch_bce.pickle', 'rb')[m
+[32m+[m	[32mcombined_dict = pickle.load(file)[m
+[32m+[m	[32mfile.close()[m
+[32m+[m	[32mlist_of_go_terms = list(bp_terms_dict.keys()) + list(mf_terms_dict.keys()) + list(cc_terms_dict.keys())[m
+[32m+[m	[32mfinal_probabilities_df = pd.DataFrame(0, index= x_test_df.index, columns=list_of_go_terms)[m
+[32m+[m	[32mfor protein in list(final_probabilities_df.index):[m
+[32m+[m		[32mfor branch_name, branch_preds_dataframe in combined_dict.items():[m
+[32m+[m			[32mfor label in list(branch_preds_dataframe.columns):[m
+[32m+[m				[32mfinal_probabilities_df.loc[protein, label] += branch_preds_dataframe.loc[protein, label][m
+[32m+[m	[32mfor name, freq in bp_terms_dict.items():[m
+[32m+[m		[32mfinal_probabilities_df[str(name)] = final_probabilities_df[str(name)].div(freq).round(2)[m
+[32m+[m	[32mfor name, freq in mf_terms_dict.items():[m
+[32m+[m		[32mfinal_probabilities_df[str(name)] = final_probabilities_df[str(name)].div(freq).round(2)[m
+[32m+[m	[32mfor name, freq in cc_terms_dict.items():[m
+[32m+[m		[32mfinal_probabilities_df[str(name)] = final_probabilities_df[str(name)].div(freq).round(2)[m
+[32m+[m	[32mfinal_predictions_df = final_probabilities_df.round(0)[m
+[32m+[m	[32mmetrics_dict['preds'] = final_predictions_df[m
+[32m+[m	[32mmetrics_dict['probs'] = final_probabilities_df[m
+[32m+[m	[32mfile = open('final_evaluation_dict_bce.pickle', 'wb')[m
+[32m+[m	[32mpickle.dump(metrics_dict, file)[m
+[32m+[m	[32mfile.close()[m
+\ No newline at end of file[m
+[1mdiff --git a/custom_modules/custom_loss.py b/custom_modules/custom_loss.py[m
+[1mnew file mode 100644[m
+[1mindex 0000000..123cc8f[m
+[1m--- /dev/null[m
+[1m+++ b/custom_modules/custom_loss.py[m
+[36m@@ -0,0 +1,106 @@[m
+[32m+[m[32m"""[m[41m [m
+[32m+[m[32ma class that represents the margin-based ranking loss criterion.[m[41m [m
+[32m+[m[32mBoth the forward and backward passes are manually implemented[m
+[32m+[m[32m"""[m
+[32m+[m
+[32m+[m[32mimport torch[m
+[32m+[m[32mimport torch.nn as nn[m
+[32m+[m[32mfrom torch.autograd import Variable, Function[m
+[32m+[m[32mimport numpy as np[m
+[32m+[m
+[32m+[m[32mclass RankingLoss(Function):[m[41m [m
+[32m+[m
+[32m+[m[32m    @staticmethod[m
+[32m+[m[32m    def forward(ctx, input, target):[m
+[32m+[m[41m    [m	[32m# set the margin value[m
+[32m+[m[32m        margin = 1.0[m
+[32m+[m
+[32m+[m[32m        L = torch.zeros(input.size()[0])[m
+[32m+[m[32m        all_labels_idx = np.arange(target.size()[1])[m
+[32m+[m[32m        input = torch.sigmoid(input)[m
+[32m+[m
+[32m+[m[32m        # filter out the data that do not contain any positive labels[m
+[32m+[m[32m        batch_normalizer_1 = torch.FloatTensor([np.sum(np.any(target, axis=1))])[m
+[32m+[m[32m        batch_normalizer_2 = torch.FloatTensor([np.sum(np.all(target, axis=1))])[m
+[32m+[m[32m        batch_normalizer = batch_normalizer_1 - batch_normalizer_2[m
+[32m+[m[32m        if batch_normalizer == 0:[m
+[32m+[m[32m            batch_normalizer = 1[m
+[32m+[m[32m        positive_indices = torch.zeros(target.size())[m
+[32m+[m[32m        negative_indices = torch.zeros(target.size())[m
+[32m+[m[32m        new_target = target.cpu().detach().data.numpy()[np.any(target == 1, axis = 1)][m
+[32m+[m[32m        new_input = input.cpu().detach().data.numpy()[np.any(target == 1, axis = 1)][m
+[32m+[m[32m        backup_target = new_target.copy()[m
+[32m+[m[32m        new_target = torch.FloatTensor(new_target[~np.all(new_target == 1, axis = 1)])[m
+[32m+[m[32m        new_input = torch.FloatTensor(new_input[~np.all(backup_target == 1, axis = 1)])[m
+[32m+[m[32m        J = torch.nonzero(new_target)[m
+[32m+[m
+[32m+[m[32m        # loop through the data and their labels[m
+[32m+[m[32m        for counter,i in enumerate(list(torch.LongTensor(np.setdiff1d(np.where(np.any(target,axis=1))[0] ,np.where(np.all(target,axis=1))[0])))):[m
+[32m+[m[32m            # create a list to store the labels[m
+[32m+[m[32m            list_of_positive_labels = [][m
+[32m+[m[32m            # msk indicates whether a label can be visited, True mean it can be visited[m
+[32m+[m[32m            # at the beginning all labels can be visited (non of them has been considered yet)[m
+[32m+[m[32m            msk = np.ones(target.size()[1], dtype = bool)[m
+[32m+[m[32m            # Find the positive labels for this example[m
+[32m+[m[32m            for element in range(J.size()[0]):[m
+[32m+[m[32m                if J[element][0] == i :[m
+[32m+[m[32m                    j = J[element][1][m
+[32m+[m[32m                    list_of_positive_labels.append(j)[m
+[32m+[m[32m                    msk[j] = False[m
+[32m+[m[32m            # if you found any loop through them[m
+[32m+[m[32m            if list_of_positive_labels:[m
+[32m+[m[32m                for pos_index, positive_label in enumerate(list_of_positive_labels):[m
+[32m+[m[32m                    # the error is -1 at the beginning[m
+[32m+[m[32m                    sample_score_margin = -1[m
+[32m+[m[32m                    # msk hold the positive label indices (we cannot loop select them)[m
+[32m+[m[32m                    msk_2 = msk.copy()[m
+[32m+[m[32m                    # get the negative labels so we can loop through them[m
+[32m+[m[32m                    neg_labels_idx = all_labels_idx[msk_2][m
+[32m+[m[32m                    # if there are any negative labels loop through them[m
+[32m+[m[32m                    if list(neg_labels_idx):[m
+[32m+[m[32m                        for neg_index, neg_idx in enumerate(list(neg_labels_idx)):[m
+[32m+[m[32m                                # mark the visited negative index as visited for this label[m
+[32m+[m[32m                   
